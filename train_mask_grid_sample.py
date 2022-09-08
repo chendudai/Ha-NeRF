@@ -194,7 +194,7 @@ class NeRFSystem(LightningModule):
         loss = sum(l for l in loss_d.values())
 
         with torch.no_grad():
-            typ  = 'fine' if 'rgb_fine' in results else 'coarse'
+            typ = 'fine' if 'rgb_fine' in results else 'coarse'
             psnr_ = psnr(results[f'rgb_{typ}'], rgbs)
 
         self.log('lr', get_learning_rate(self.optimizer))
@@ -342,5 +342,5 @@ def main(hparams):
     trainer.fit(system)
 
 if __name__ == '__main__':
-    hparams = get_opts() 
+    hparams = get_opts()
     main(hparams)

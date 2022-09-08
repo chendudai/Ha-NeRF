@@ -24,14 +24,13 @@ from torchvision import transforms as T
 
 torch.backends.cudnn.benchmark = True
 
-
 def get_opts():
     parser = ArgumentParser()
     parser.add_argument('--root_dir', type=str,
                         default='/home/cy/PNW/datasets/nerf_synthetic/lego',
                         help='root directory of dataset')
     parser.add_argument('--dataset_name', type=str, default='blender',
-                        choices=['blender', 'phototourism', 'wikiscenes'],
+                        choices=['blender', 'phototourism'],
                         help='which dataset to validate')
     parser.add_argument('--scene_name', type=str, default='test',
                         help='scene name, used as output folder name')
@@ -130,9 +129,6 @@ def eulerAnglesToRotationMatrix(theta):
     return R
 
 if __name__ == "__main__":
-    torch.cuda.set_device('cuda:2')
-    torch.cuda.empty_cache()
-
     args = get_opts()
 
     kwargs = {'root_dir': args.root_dir,
