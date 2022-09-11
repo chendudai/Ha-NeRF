@@ -60,6 +60,7 @@ class PhototourismDataset(Dataset):
         self.scene_name = os.path.basename(tsv)[:-4]
         self.files = pd.read_csv(tsv, sep='\t')
         self.files = self.files[~self.files['id'].isnull()] # remove data without id
+        # self.files = self.files[:100]  # start with smaller set
         self.files.reset_index(inplace=True, drop=True)
 
         # Step 1. load image paths
@@ -77,11 +78,13 @@ class PhototourismDataset(Dataset):
                 img_path_to_id[v.name] = v.id
             self.img_ids = []
             self.image_paths = {} # {id: filename}
+            self.cam_ids = []
             for filename in list(self.files['filename']):
                 if filename in img_path_to_id:
                     id_ = img_path_to_id[filename]
                     self.image_paths[id_] = filename
                     self.img_ids += [id_]
+                    self.cam_ids += [imdata[id_].camera_id]
 
         # Step 2: read and rescale camera intrinsics
         if self.use_cache:
@@ -90,17 +93,22 @@ class PhototourismDataset(Dataset):
         else:
             self.Ks = {} # {id: K}
             camdata = read_cameras_binary(os.path.join(self.root_dir, 'dense/sparse/cameras.bin'))
-            for id_ in self.img_ids:
+            for i,id_ in enumerate(self.img_ids):
                 K = np.zeros((3, 3), dtype=np.float32)
-                cam = camdata[id_]
-                img_w, img_h = int(cam.params[2]*2), int(cam.params[3]*2)
-                img_w_, img_h_ = img_w//self.img_downscale, img_h//self.img_downscale
-                K[0, 0] = cam.params[0]*img_w_/img_w # fx
-                K[1, 1] = cam.params[1]*img_h_/img_h # fy
-                K[0, 2] = cam.params[2]*img_w_/img_w # cx
-                K[1, 2] = cam.params[3]*img_h_/img_h # cy
-                K[2, 2] = 1
-                self.Ks[id_] = K
+                cam = camdata.get(self.cam_ids[i])
+                if cam is not None:
+
+                    img_w, img_h = int(cam.params[2]*2), int(cam.params[3]*2)
+                    img_w_, img_h_ = img_w//self.img_downscale, img_h//self.img_downscale
+                    K[0, 0] = cam.params[0]*img_w_/img_w # fx
+                    K[1, 1] = cam.params[1]*img_h_/img_h # fy
+                    K[0, 2] = cam.params[2]*img_w_/img_w # cx
+                    K[1, 2] = cam.params[3]*img_h_/img_h # cy
+                    K[2, 2] = 1
+                    self.Ks[id_] = K
+
+                else:
+                    print('Error:' + str(id_))
 
         # Step 3: read c2w poses (of the images in tsv file only) and correct the order
         if self.use_cache:

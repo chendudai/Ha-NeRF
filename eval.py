@@ -8,7 +8,7 @@ from argparse import ArgumentParser
 
 from models.rendering import render_rays
 from models.nerf import *
-
+from utils.interpolate_cam_path import generate_camera_path
 from utils import load_ckpt
 import metrics
 
@@ -130,7 +130,7 @@ def eulerAnglesToRotationMatrix(theta):
 
 if __name__ == "__main__":
     args = get_opts()
-
+    # args.split = 'test_train'
     kwargs = {'root_dir': args.root_dir,
               'split': args.split}
     if args.dataset_name == 'blender':
@@ -140,7 +140,9 @@ if __name__ == "__main__":
         kwargs['use_cache'] = args.use_cache
     dataset = dataset_dict[args.dataset_name](**kwargs)
     scene = os.path.basename(args.root_dir.strip('/'))
-
+    # if scene == 'undistorted':
+    #     scene = args.root_dir.split('/')[-3]
+    scene = 'test_undistorted'
     embedding_xyz = PosEmbedding(args.N_emb_xyz-1, args.N_emb_xyz)
     embedding_dir = PosEmbedding(args.N_emb_dir-1, args.N_emb_dir)
     embeddings = {'xyz': embedding_xyz, 'dir': embedding_dir}
@@ -149,6 +151,7 @@ if __name__ == "__main__":
         enc_a = E_attr(3, args.N_a).cuda()
         load_ckpt(enc_a, args.ckpt_path, model_name='enc_a')
         kwargs = {}
+
         if args.dataset_name == 'blender':
             with open(os.path.join(args.root_dir, f"transforms_train.json"), 'r') as f:
                 meta_train = json.load(f)
@@ -183,7 +186,7 @@ if __name__ == "__main__":
 
     # enc_a
     # define testing poses and appearance index for phototourism
-    if args.dataset_name == 'phototourism' and args.split == 'test':
+    if args.dataset_name == 'phototourism' and args.split == 'test_test':
         # define testing camera intrinsics (hard-coded, feel free to change)
         dataset.test_img_w, dataset.test_img_h = args.img_wh
         dataset.test_focal = dataset.test_img_w/2/np.tan(np.pi/6) # fov=60 degrees
@@ -318,6 +321,14 @@ if __name__ == "__main__":
                 dataset.poses_test[i, 1, 3] += dy[i]
                 dataset.poses_test[i, 2, 3] += dz[i]
                 dataset.poses_test[i, :, :3] = np.dot(eulerAnglesToRotationMatrix([theta_x[i],theta_y[i],theta_z[i]]), dataset.poses_test[i, :, :3])
+
+        elif scene == 'test_undistorted':
+            # select appearance embedding, hard-coded for each scene
+            dataset.test_appearance_idx = 10
+            # interpolate between multiple cameras to generate path
+            dataset.poses_test = generate_camera_path(dataset)
+
+
         else:
             raise NotImplementedError
         kwargs['output_transient'] = False
@@ -326,7 +337,8 @@ if __name__ == "__main__":
         sample = dataset[i]
         rays = sample['rays']
         ts = sample['ts']
-        if args.split == 'test_test' and args.encode_a:
+        # ts = torch.zeros(len(rays), dtype=torch.long)
+        if (args.split == 'test_test' or args.split == 'test_train') and args.encode_a:
             whole_img = sample['whole_img'].unsqueeze(0).cuda()
             kwargs['a_embedded_from_img'] = enc_a(whole_img)
         results = batched_inference(models, embeddings, rays.cuda(), ts.cuda(),
@@ -346,7 +358,7 @@ if __name__ == "__main__":
         imageio.imwrite(os.path.join(dir_name, f'{i:03d}.png'), img_pred_)
         
     if args.dataset_name == 'blender' or \
-      (args.dataset_name == 'phototourism' and args.split == 'test'):
+      (args.dataset_name == 'phototourism' and args.split == 'test_test'):
         imageio.mimsave(os.path.join(dir_name, f'{args.scene_name}.{args.video_format}'),
                         imgs, fps=30)
     print('Done')

@@ -189,7 +189,10 @@ class NeRFSystem(LightningModule):
         W = int(sqrt(rgbs.size(0)))
 
         test_blender = False
-        results = self(rays, ts, whole_img, W, H, rgb_idx, uv_sample, test_blender)
+        try:
+            results = self(rays, ts, whole_img, W, H, rgb_idx, uv_sample, test_blender)
+        except:
+            return
         loss_d, AnnealingWeight = self.loss(results, rgbs, self.hparams, self.global_step)
         loss = sum(l for l in loss_d.values())
 
@@ -204,6 +207,7 @@ class NeRFSystem(LightningModule):
         for k, v in loss_d.items():
             self.log(f'train/{k}', v)
         self.log('train/psnr', psnr_)
+        self.log('val/psnr', psnr_)
 
         if (self.global_step + 1) % 5000 == 0:
             img = results[f'rgb_{typ}'].detach().view(H, W, 3).permute(2, 0, 1).cpu() # (3, H, W)
@@ -326,7 +330,7 @@ def main(hparams):
                             debug=False,
                             create_git_tag=False,
                             log_graph=False)
-
+    # hparams.ckpt_path = '/mnt/data/chendudai/repos/HaNeRF/save/ckpts/test_undistorted_0_1/test/epoch=1.ckpt'
     trainer = Trainer(max_epochs=hparams.num_epochs,
                       checkpoint_callback=checkpoint_callback,
                       resume_from_checkpoint=hparams.ckpt_path,

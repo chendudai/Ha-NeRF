@@ -56,3 +56,4 @@ def create_nerf_root_dir_from_ws(input_dir, root_dir):
             split = 'test' if i % 10 == 0 else 'train'
             tsv_writer.writerow([filename_curr, str(i), split, dataset_name])
     return
+
