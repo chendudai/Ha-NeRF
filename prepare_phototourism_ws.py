@@ -6,6 +6,8 @@ import numpy as np
 import os
 import pickle
 
+os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
+
 def get_opts():
     parser = argparse.ArgumentParser()
     parser.add_argument('--input_dir', type=str, required=True,
@@ -20,6 +22,8 @@ def get_opts():
 
 if __name__ == '__main__':
     args = get_opts()
+    # create_nerf_root_dir_from_ws(args.input_dir, args.root_dir)
+
     if not os.path.exists(args.root_dir):
         create_nerf_root_dir_from_ws(args.input_dir, args.root_dir)
         print('run: ' + 'LD_LIBRARY_PATH=/phoenix/S7/he93/Deploy/colmap/build/__install__/lib /phoenix/S7/he93/Deploy/colmap/build/__install__/bin/colmap image_undistorter --image_path images --input_path sparse --output_path undistorted --output_type COLMAP')

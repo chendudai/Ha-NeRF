@@ -50,7 +50,7 @@ class Image(BaseImage):
         return qvec2rotmat(self.qvec)
 
 
-CAMERA_MODELS = {
+CAMERA_MODEL_NAMES = {
     CameraModel(model_id=0, model_name="SIMPLE_PINHOLE", num_params=3),
     CameraModel(model_id=1, model_name="PINHOLE", num_params=4),
     CameraModel(model_id=2, model_name="SIMPLE_RADIAL", num_params=4),
@@ -64,7 +64,7 @@ CAMERA_MODELS = {
     CameraModel(model_id=10, model_name="THIN_PRISM_FISHEYE", num_params=12)
 }
 CAMERA_MODEL_IDS = dict([(camera_model.model_id, camera_model) \
-                         for camera_model in CAMERA_MODELS])
+                         for camera_model in CAMERA_MODEL_NAMES])
 
 
 def read_next_bytes(fid, num_bytes, format_char_sequence, endian_character="<"):
@@ -336,7 +336,8 @@ def write_cameras_binary(cameras, path_to_model_file):
     with open(path_to_model_file, "wb") as fid:
         write_next_bytes(fid, len(cameras), "Q")
         for _, cam in cameras.items():
-            model_id = CAMERA_MODEL_NAMES[cam.model].model_id
+            # model_id = CAMERA_MODEL_NAMES[cam.model].model_id
+            model_id = 1
             camera_properties = [cam.id,
                                  model_id,
                                  cam.width,

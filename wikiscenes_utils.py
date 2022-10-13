@@ -17,12 +17,25 @@ def create_nerf_root_dir_from_ws(input_dir, root_dir):
     images_input_dir = os.path.join(input_dir, '../../../..', 'WikiScenes1200px', 'cathedrals')
     image_file_list = []
 
+    # with open(os.path.join(root_dir, 'res.txt'), 'rb') as f:
+    #     images_selected = f.readlines()
+    #
+    # # Convert to the correct format
+    # for j,i in enumerate(images_selected):
+    #     images_selected[j] = i[0:8].decode("utf-8")
+
+    j = 0
     for i,image in enumerate(images):
         image_curr_input = os.path.join(images_input_dir, images[image].name)
         image_output_filename = str(i).zfill(4) + os.path.splitext(images[image].name)[1]  #  + '_' + os.path.basename(images[image].name)
         images[image] = images[image]._replace(name = image_output_filename)
         images[image] = images[image]._replace(id = i)
+        # if os.path.exists(image_curr_input) and  images[image].name in images_selected:
         if os.path.exists(image_curr_input):
+            # image_output_filename = str(j).zfill(4) + os.path.splitext(images[image].name)[1]  # + '_' + os.path.basename(images[image].name)
+            # images[image] = images[image]._replace(name=image_output_filename)
+            # images[image] = images[image]._replace(id=j)
+            # j += 1
             shutil.copyfile(image_curr_input, os.path.join(images_folder, image_output_filename))
             image_file_list.append(image_output_filename)
         else:
@@ -43,7 +56,7 @@ def create_nerf_root_dir_from_ws(input_dir, root_dir):
         if i % 100 == 0:
             print('writing ' + image_output_filename + '... ' + str(i) + '/' + str(len(images)))
     ## save (updated) files
-    write_model(cameras, images, points3D, sparse_folder, '.txt')
+    write_model(cameras, images, points3D, sparse_folder, '.bin')
     # save splits
     dataset_name = os.path.basename(os.path.dirname(root_dir))
     with open(os.path.join(root_dir, dataset_name + '.tsv'), 'wt') as out_file:

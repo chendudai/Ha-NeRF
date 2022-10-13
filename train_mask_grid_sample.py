@@ -189,10 +189,10 @@ class NeRFSystem(LightningModule):
         W = int(sqrt(rgbs.size(0)))
 
         test_blender = False
-        try:
-            results = self(rays, ts, whole_img, W, H, rgb_idx, uv_sample, test_blender)
-        except:
-            return
+        # try:
+        results = self(rays, ts, whole_img, W, H, rgb_idx, uv_sample, test_blender)
+        # except:
+        #     return
         loss_d, AnnealingWeight = self.loss(results, rgbs, self.hparams, self.global_step)
         loss = sum(l for l in loss_d.values())
 
@@ -247,7 +247,7 @@ class NeRFSystem(LightningModule):
             W, H = self.hparams.img_wh
             uv_sample = None
 
-        if self.hparams.encode_a or self.hparams.use_mask or self.hparams.deocclusion:
+        if self.hparams.encode_a or self.hparams.use_mask:
             if self.hparams.dataset_name == 'phototourism':
                 whole_img = batch['whole_img']
             else:
@@ -317,6 +317,7 @@ class NeRFSystem(LightningModule):
             self.log('val/r_md', torch.stack([x['r_md'] for x in outputs]).mean())
 
 def main(hparams):
+    os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
     system = NeRFSystem(hparams)
     checkpoint_callback = \
         ModelCheckpoint(filepath=os.path.join(hparams.save_dir,

@@ -37,7 +37,7 @@ class PhototourismDataset(Dataset):
         if ('hagia_sophia_interior' in self.root_dir) or ('taj_mahal' in self.root_dir):
             self.img_downscale_appearance = 4
         else:
-            self.img_downscale_appearance = 8
+            self.img_downscale_appearance = 4
 
         if split == 'val': # image downscale=1 will cause OOM in val mode
             self.img_downscale = max(2, self.img_downscale)
@@ -60,7 +60,7 @@ class PhototourismDataset(Dataset):
         self.scene_name = os.path.basename(tsv)[:-4]
         self.files = pd.read_csv(tsv, sep='\t')
         self.files = self.files[~self.files['id'].isnull()] # remove data without id
-        # self.files = self.files[:100]  # start with smaller set
+        # self.files = self.files[:10]  # start with smaller set
         self.files.reset_index(inplace=True, drop=True)
 
         # Step 1. load image paths
@@ -73,13 +73,23 @@ class PhototourismDataset(Dataset):
                 self.image_paths = pickle.load(f)
         else:
             imdata = read_images_binary(os.path.join(self.root_dir, 'dense/sparse/images.bin'))
+
+            # with open(os.path.join(self.root_dir, 'res.txt'), 'rb') as f:
+            #     images_selected = f.readlines()
+
             img_path_to_id = {}
             for v in imdata.values():
                 img_path_to_id[v.name] = v.id
             self.img_ids = []
             self.image_paths = {} # {id: filename}
             self.cam_ids = []
+
+            # Convert to the correct format
+            # for j,i in enumerate(images_selected):
+            #     images_selected[j] = i[0:8].decode("utf-8")
+
             for filename in list(self.files['filename']):
+                # if filename in img_path_to_id and filename in images_selected:
                 if filename in img_path_to_id:
                     id_ = img_path_to_id[filename]
                     self.image_paths[id_] = filename
@@ -195,10 +205,24 @@ class PhototourismDataset(Dataset):
                         img_w = img_w//self.img_downscale
                         img_h = img_h//self.img_downscale
                         img_rs = img.resize((img_w, img_h), Image.LANCZOS)
+
                     img_rs = self.transform(img_rs) # (3, h, w)
 
                     img_8 = img.resize((img_w//self.img_downscale_appearance, img_h//self.img_downscale_appearance), Image.LANCZOS)
+
+
+                    const_minSize = 33
+                    if img_8.size[0] < const_minSize:
+                        a = img_8.size[0] / const_minSize
+                        img_8 = img.resize((int(img_8.size[0] // a), int(img_8.size[1] //a)),Image.LANCZOS)
+                    if img_8.size[1] < const_minSize:
+                        a = img_8.size[1] / const_minSize
+                        img_8 = img.resize((int(img_8.size[0] // a), int(img_8.size[1] //a)),Image.LANCZOS)
+
+
+
                     img_8 = self.normalize(self.transform(img_8)) # (3, h, w)
+
                     self.all_imgs += [self.normalize(img_8)]
                     self.all_imgs_wh += [torch.Tensor([img_w, img_h]).unsqueeze(0)]
                     img_rs = img_rs.view(3, -1).permute(1, 0) # (h*w, 3) RGB
@@ -226,6 +250,7 @@ class PhototourismDataset(Dataset):
             pass
 
     def define_transforms(self):
+        # self.resize = T.Resize([400, 600], Image.BICUBIC)
         self.transform = T.ToTensor()
         self.normalize = T.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
 
@@ -293,6 +318,7 @@ class PhototourismDataset(Dataset):
                 img_w = img_w//self.img_downscale
                 img_h = img_h//self.img_downscale
                 img_s = img.resize((img_w, img_h), Image.LANCZOS)
+                # img_s = self.resize(img_s)
             img_s = self.transform(img_s) # (3, h, w)
 
             img_s = img_s.view(3, -1).permute(1, 0) # (h*w, 3) RGB
@@ -317,7 +343,18 @@ class PhototourismDataset(Dataset):
 
             img_w, img_h = img.size
             img_8 = img.resize((img_w//self.img_downscale_appearance, img_h//self.img_downscale_appearance), Image.LANCZOS)
+
+            const_minSize = 33
+            if img_8.size[0] < const_minSize:
+                a = img_8.size[0] / const_minSize
+                img_8 = img.resize((int(img_8.size[0] // a), int(img_8.size[1] // a)), Image.LANCZOS)
+            if img_8.size[1] < const_minSize:
+                a = img_8.size[1] / const_minSize
+                img_8 = img.resize((int(img_8.size[0] // a), int(img_8.size[1] // a)), Image.LANCZOS)
+
             img_8 = self.normalize(self.transform(img_8)) # (3, h, w)
+
+
             sample['whole_img'] = img_8
 
         else:

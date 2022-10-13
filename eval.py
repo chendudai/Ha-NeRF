@@ -57,7 +57,7 @@ def get_opts():
     parser.add_argument('--N_vocab', type=int, default=100,
                         help='''number of vocabulary (number of images) 
                                 in the dataset for nn.Embedding''')
-    parser.add_argument('--encode_a', default=False, action="store_true",
+    parser.add_argument('--encode_a', default=True, action="store_true",
                         help='whether to encode appearance')
     parser.add_argument('--N_a', type=int, default=48,
                         help='number of embeddings for appearance')
@@ -326,7 +326,7 @@ if __name__ == "__main__":
             # select appearance embedding, hard-coded for each scene
             dataset.test_appearance_idx = 10
             # interpolate between multiple cameras to generate path
-            dataset.poses_test = generate_camera_path(dataset)
+            # dataset.poses_test = generate_camera_path(dataset)
 
 
         else:
@@ -356,7 +356,12 @@ if __name__ == "__main__":
         img_pred_ = (img_pred*255).astype(np.uint8)
         imgs += [img_pred_]
         imageio.imwrite(os.path.join(dir_name, f'{i:03d}.png'), img_pred_)
-        
+
+        img_GT = np.clip(sample['rgbs'].view(h, w, 3).cpu().numpy(), 0, 1)
+        img_GT = (img_GT*255).astype(np.uint8)
+        imageio.imwrite(os.path.join(dir_name, f'{i:03d}_GT.png'), img_GT)
+
+
     if args.dataset_name == 'blender' or \
       (args.dataset_name == 'phototourism' and args.split == 'test_test'):
         imageio.mimsave(os.path.join(dir_name, f'{args.scene_name}.{args.video_format}'),
