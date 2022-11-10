@@ -195,11 +195,15 @@ class PhototourismDataset(Dataset):
                 self.all_rgbs = []
                 self.all_imgs = []
                 self.all_imgs_wh = []
+                self.all_semantics_gt = []
+
                 for id_ in self.img_ids_train:
                     c2w = torch.FloatTensor(self.poses_dict[id_])
 
                     img = Image.open(os.path.join(self.root_dir, 'dense/images',
                                                   self.image_paths[id_])).convert('RGB')
+
+
                     img_w, img_h = img.size
                     if self.img_downscale > 1:
                         img_w = img_w//self.img_downscale
@@ -207,6 +211,14 @@ class PhototourismDataset(Dataset):
                         img_rs = img.resize((img_w, img_h), Image.LANCZOS)
 
                     img_rs = self.transform(img_rs) # (3, h, w)
+
+                    path_semantics = os.path.join(self.root_dir, 'dense/semantics', self.image_paths[id_])
+                    path_semantics = path_semantics[:86] + '_pred_crf.pkl'
+                    with open(path_semantics, 'rb') as f:
+                        semantics_gt = pickle.load(f)
+                    semantics_gt = torch.Tensor(np.resize(semantics_gt, [img_w, img_h])).long()
+                    semantics_gt = semantics_gt.view(-1, 1)
+
 
                     img_8 = img.resize((img_w//self.img_downscale_appearance, img_h//self.img_downscale_appearance), Image.LANCZOS)
 
@@ -227,7 +239,8 @@ class PhototourismDataset(Dataset):
                     self.all_imgs_wh += [torch.Tensor([img_w, img_h]).unsqueeze(0)]
                     img_rs = img_rs.view(3, -1).permute(1, 0) # (h*w, 3) RGB
                     self.all_rgbs += [img_rs]
-                    
+                    self.all_semantics_gt += [semantics_gt]
+
                     directions = get_ray_directions(img_h, img_w, self.Ks[id_])
                     rays_o, rays_d = get_rays(directions, c2w)
                     rays_t = id_ * torch.ones(len(rays_o), 1)
@@ -241,7 +254,8 @@ class PhototourismDataset(Dataset):
                 self.all_rays = torch.cat(self.all_rays, 0) # ((N_images-1)*h*w, 8)
                 self.all_rgbs = torch.cat(self.all_rgbs, 0) # ((N_images-1)*h*w, 3)
                 self.all_imgs_wh = torch.cat(self.all_imgs_wh, 0) # ((N_images-1)*h*w, 3)
-        
+                self.all_semantics_gt = torch.cat(self.all_semantics_gt, 0) # ((N_images-1)*h*w)
+
         elif self.split in ['val', 'test_train']: # use the first image as val image (also in train)
             self.val_id = self.img_ids_train[0]
 
@@ -294,6 +308,7 @@ class PhototourismDataset(Dataset):
             sample = {'rays': self.all_rays[rgb_sample_points, :8],
                       'ts': self.all_rays[rgb_sample_points, 8].long(),
                       'rgbs': self.all_rgbs[rgb_sample_points],
+                      'semantics_gt': self.all_semantics_gt[rgb_sample_points],
                       'whole_img': img,
                       'rgb_idx': img_sample_points,
                       'min_scale_cur': min_scale_cur,
@@ -323,6 +338,16 @@ class PhototourismDataset(Dataset):
 
             img_s = img_s.view(3, -1).permute(1, 0) # (h*w, 3) RGB
             sample['rgbs'] = img_s
+
+
+            path_semantics = os.path.join(self.root_dir, 'dense/semantics', self.image_paths[id_])
+            path_semantics = path_semantics[:86] + '_pred_crf.pkl'
+            with open(path_semantics, 'rb') as f:
+                semantics_gt = pickle.load(f)
+            semantics_gt = torch.Tensor(np.resize(semantics_gt, [img_w, img_h])).long()
+            semantics_gt = semantics_gt.view(-1, 1)
+
+            sample['semantics_gt'] = semantics_gt
 
             directions = get_ray_directions(img_h, img_w, self.Ks[id_])
 

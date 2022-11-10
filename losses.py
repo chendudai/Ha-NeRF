@@ -46,7 +46,7 @@ class HaNeRFLoss(nn.Module):
         self.Annealing = ExponentialAnnealingWeight(max = hparams.maskrs_max, min = hparams.maskrs_min, k = hparams.maskrs_k)
         self.mse_loss = nn.MSELoss()
 
-    def forward(self, inputs, targets, hparams, global_step):
+    def forward(self, inputs, targets, semantics_gt, hparams, global_step):
         ret = {}
 
         if 'a_embedded' in inputs:
@@ -70,8 +70,17 @@ class HaNeRFLoss(nn.Module):
             else:
                 ret['f_l'] = 0.5 * ((inputs['rgb_fine']-targets)**2).mean()
 
+        CE_loss = nn.CrossEntropyLoss()
+        if 'semantics_fine' in inputs:
+            ret['semantics_fine'] = CE_loss(inputs['semantics_fine'], semantics_gt)
+        if 'semantics_coarse' in inputs:
+            ret['semantics_coarse'] = CE_loss(inputs['semantics_coarse'], semantics_gt)
+
         for k, v in ret.items():
-            ret[k] = self.coef * v
+            if k=='semantics_coarse' or  k=='semantics_fine':
+                ret[k] = self.coef * v #0.02 * v
+            else:
+                ret[k] = self.coef * v
 
         return ret, self.Annealing.getWeight(global_step)
 

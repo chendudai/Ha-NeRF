@@ -30,9 +30,18 @@ class PosEmbedding(nn.Module):
         return torch.cat(out, -1)
 
 
+def fc_block(in_f, num_semantic_classes):
+    out_f = in_f // 2
+    x =  nn.Sequential(
+        nn.Linear(in_f, out_f),
+        nn.ReLU(out_f)
+    )
+    return nn.Sequential(x, nn.Linear(out_f, num_semantic_classes))
+
 class NeRF(nn.Module):
     def __init__(self, typ,
                  D=8, W=256, skips=[4],
+                 enable_semantic=True, num_semantic_classes=11,
                  in_channels_xyz=63, in_channels_dir=27,
                  encode_appearance=False, in_channels_a=48,
                  encode_random=False):
@@ -44,6 +53,7 @@ class NeRF(nn.Module):
         self.skips = skips
         self.in_channels_xyz = in_channels_xyz
         self.in_channels_dir = in_channels_dir
+        self.enable_semantic = enable_semantic
 
         # self.encode_appearance = encode_appearance
         self.encode_appearance = False if typ=='coarse' else encode_appearance
@@ -70,6 +80,8 @@ class NeRF(nn.Module):
                         nn.Linear(W+in_channels_dir+self.in_channels_a, W//2), nn.ReLU(True))
         self.static_rgb = nn.Sequential(nn.Linear(W//2, 3), nn.Sigmoid())
 
+        if enable_semantic:
+            self.semantic = fc_block(W, num_semantic_classes)
 
     def forward(self, x, sigma_only=False, output_random=True):
 
@@ -98,16 +110,23 @@ class NeRF(nn.Module):
         if sigma_only:
             return static_sigma
 
+        if self.enable_semantic:
+            semantic_output = self.semantic(xyz_)
+
         xyz_encoding_final = self.xyz_encoding_final(xyz_)
         dir_encoding_input = torch.cat([xyz_encoding_final, input_dir_a], 1)
         dir_encoding = self.dir_encoding(dir_encoding_input)
         static_rgb = self.static_rgb(dir_encoding) # (B, 3)
-        static = torch.cat([static_rgb, static_sigma], 1) # (B, 4)
+        outputs = torch.cat([static_rgb, static_sigma], 1) # (B, 4)
+
+        if self.enable_semantic:
+            outputs = torch.cat([outputs, semantic_output], 1)
 
         if output_random:
             dir_encoding_input_random = torch.cat([xyz_encoding_final.detach(), input_dir_a_random.detach()], 1)
             dir_encoding_random = self.dir_encoding(dir_encoding_input_random)
             static_rgb_random = self.static_rgb(dir_encoding_random) # (B, 3)
-            return torch.cat([static, static_rgb_random], 1) # (B, 7)
+            return torch.cat([outputs, static_rgb_random], 1) # (B, 7)
 
-        return static
+
+        return outputs

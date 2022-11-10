@@ -128,7 +128,13 @@ def render_rays(models,
             out = rearrange(out, '(n1 n2) c -> n1 n2 c', n1=N_rays, n2=N_samples_)
             static_rgbs = out[..., :3] # (N_rays, N_samples_, 3)
             static_sigmas = out[..., 3] # (N_rays, N_samples_)
-            if output_random:
+
+            if model.enable_semantic:
+                semantics = out[..., 4:15] # (N_rays, N_samples_, classes)
+
+            if output_random and model.enable_semantic:
+                static_rgbs_random = out[..., 15:]
+            elif output_random and not model.enable_semantic:
                 static_rgbs_random = out[..., 4:]
 
         # Convert these values using volume rendering
@@ -157,6 +163,11 @@ def render_rays(models,
         if white_back:
             rgb_map += 1-rearrange(weights_sum, 'n -> n 1')
         results[f'rgb_{typ}'] = rgb_map
+
+        if model.enable_semantic:
+            semantics = reduce(rearrange(weights, 'n1 n2 -> n1 n2 1')*semantics,
+                              'n1 n2 c -> n1 c', 'sum')
+            results[f'semantics_{typ}'] = semantics
 
         if output_random:
             rgb_map_random = reduce(rearrange(weights, 'n1 n2 -> n1 n2 1')*static_rgbs_random,

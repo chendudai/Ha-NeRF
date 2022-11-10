@@ -122,4 +122,11 @@ def get_opts():
     parser.add_argument('--refresh_every', type=int, default=1,
                         help='print the progress bar every X steps')
 
+    ## Semantic Nerf
+    parser.add_argument('--enable_semantic', default=False, action="store_true",
+                        help='whether to enable semantics')
+    parser.add_argument('--num_semantic_classes', type=int, default=11,
+                        help='The number of semantic classes')
+
+
     return parser.parse_args()

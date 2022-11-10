@@ -53,12 +53,15 @@ class NeRFSystem(LightningModule):
             self.embedding_a_list = [None] * hparams.N_vocab
 
         self.nerf_coarse = NeRF('coarse',
+                                enable_semantic=hparams.enable_semantic,
+                                num_semantic_classes=hparams.num_semantic_classes,
                                 in_channels_xyz=6*hparams.N_emb_xyz+3,
                                 in_channels_dir=6*hparams.N_emb_dir+3)
         self.models = {'coarse': self.nerf_coarse}
 
         if hparams.N_importance > 0:
             self.nerf_fine = NeRF('fine',
+                                  enable_semantic=hparams.enable_semantic, num_semantic_classes=hparams.num_semantic_classes,
                                   in_channels_xyz=6*hparams.N_emb_xyz+3,
                                   in_channels_dir=6*hparams.N_emb_dir+3,
                                   encode_appearance=hparams.encode_a,
@@ -133,6 +136,9 @@ class NeRFSystem(LightningModule):
                 results['a_embedded_random_rec'] = self.enc_a(rec_img_random)
                 self.embedding_a_list[ts[0]] = kwargs['a_embedded_from_img'].clone().detach()
 
+        # if self.hparams.enable_semantic:
+        #     results['semantics'] =
+
         return results
 
     def setup(self, stage):
@@ -178,6 +184,7 @@ class NeRFSystem(LightningModule):
     def training_step(self, batch, batch_nb):
         rays, ts = batch['rays'].squeeze(), batch['ts'].squeeze()
         rgbs = batch['rgbs'].squeeze()
+        semantics_gt = batch['semantics_gt'].squeeze()
         uv_sample = batch['uv_sample'].squeeze()
         if self.hparams.encode_a or self.hparams.use_mask:
             whole_img = batch['whole_img']
@@ -193,7 +200,7 @@ class NeRFSystem(LightningModule):
         results = self(rays, ts, whole_img, W, H, rgb_idx, uv_sample, test_blender)
         # except:
         #     return
-        loss_d, AnnealingWeight = self.loss(results, rgbs, self.hparams, self.global_step)
+        loss_d, AnnealingWeight = self.loss(results, rgbs, semantics_gt, self.hparams, self.global_step)
         loss = sum(l for l in loss_d.values())
 
         with torch.no_grad():
@@ -239,6 +246,7 @@ class NeRFSystem(LightningModule):
     def validation_step(self, batch, batch_nb):
         rays, ts = batch['rays'].squeeze(), batch['ts'].squeeze()
         rgbs =  batch['rgbs'].squeeze()
+        semantics_gt = batch['semantics_gt'].squeeze()
         if self.hparams.dataset_name == 'phototourism':
             uv_sample = batch['uv_sample'].squeeze()
             WH = batch['img_wh']
@@ -259,7 +267,7 @@ class NeRFSystem(LightningModule):
 
         test_blender = (self.hparams.dataset_name == 'blender')
         results = self(rays, ts, whole_img, W, H, rgb_idx, uv_sample, test_blender)
-        loss_d, AnnealingWeight = self.loss(results, rgbs, self.hparams, self.global_step)
+        loss_d, AnnealingWeight = self.loss(results, rgbs, semantics_gt, self.hparams, self.global_step)
         loss = sum(l for l in loss_d.values())
         log = {'val_loss': loss}
         for k, v in loss_d.items():

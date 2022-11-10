@@ -191,6 +191,7 @@ if __name__ == "__main__":
                         in_channels_dir=6*args.N_emb_dir+3).cuda()
     models = {'coarse': nerf_coarse}
     nerf_fine = NeRF('fine',
+                     enable_semantic = enable_semantic,
                      in_channels_xyz=6*args.N_emb_xyz+3,
                      in_channels_dir=6*args.N_emb_dir+3,
                      encode_appearance=args.encode_a,
