@@ -1,11 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" autoUpload="Always" serverName="chendudai@dan4:22 password (1)" remoteFilesAllowedToDisappearOnAutoupload="false">
+  <component name="PublishConfigData" autoUpload="Always" serverName="HaNeRF" remoteFilesAllowedToDisappearOnAutoupload="false">
     <serverData>
-      <paths name="chendudai@dan4:22 password (1)">
+      <paths name="HaNeRF">
         <serverdata>
           <mappings>
-            <mapping deploy="/mnt/data/chendudai/repos/HaNeRF" local="$PROJECT_DIR$" web="/" />
+            <mapping deploy="/mnt/data/chendudai/repos/HaNeRF" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="semantic_nerf">
+        <serverdata>
+          <mappings>
+            <mapping local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="stable-dreamfusion">
+        <serverdata>
+          <mappings>
+            <mapping local="$PROJECT_DIR$" web="/" />
           </mappings>
         </serverdata>
       </paths>
