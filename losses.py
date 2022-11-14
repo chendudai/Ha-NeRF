@@ -1,6 +1,8 @@
 import torch
 from torch import nn
 import math
+import numpy as np
+
 
 class ColorLoss(nn.Module):
     def __init__(self, coef=1):
@@ -78,7 +80,7 @@ class HaNeRFLoss(nn.Module):
 
         for k, v in ret.items():
             if k=='semantics_coarse' or  k=='semantics_fine':
-                ret[k] = self.coef * v #0.02 * v
+                ret[k] = 0.1 * v  #self.coef * v #0.02 * v
             else:
                 ret[k] = self.coef * v
 

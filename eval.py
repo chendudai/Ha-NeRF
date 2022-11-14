@@ -75,6 +75,13 @@ def get_opts():
     parser.add_argument('--save_dir', type=str, default="./",
                         help='pretrained checkpoint path to load')
 
+    ## Semantic Nerf
+    parser.add_argument('--enable_semantic', default=False, action="store_true",
+                        help='whether to enable semantics')
+    parser.add_argument('--num_semantic_classes', type=int, default=11,
+                        help='The number of semantic classes')
+
+
     return parser.parse_args()
 
 
@@ -167,9 +174,11 @@ if __name__ == "__main__":
             kwargs['a_embedded_from_img'] = enc_a(whole_img)
 
     nerf_coarse = NeRF('coarse',
+                       enable_semantic=args.enable_semantic, num_semantic_classes=args.num_semantic_classes,
                         in_channels_xyz=6*args.N_emb_xyz+3,
                         in_channels_dir=6*args.N_emb_dir+3).cuda()
     nerf_fine = NeRF('fine',
+                     enable_semantic=args.enable_semantic, num_semantic_classes=args.num_semantic_classes,
                      in_channels_xyz=6*args.N_emb_xyz+3,
                      in_channels_dir=6*args.N_emb_dir+3,
                      encode_appearance=args.encode_a,
@@ -360,6 +369,15 @@ if __name__ == "__main__":
         img_GT = np.clip(sample['rgbs'].view(h, w, 3).cpu().numpy(), 0, 1)
         img_GT = (img_GT*255).astype(np.uint8)
         imageio.imwrite(os.path.join(dir_name, f'{i:03d}_GT.png'), img_GT)
+
+        if args.enable_semantic:
+            sem_pred = results['semantics_fine'].max(dim=1)[1].view(h, w, 1).cpu().numpy()
+            sem_pred_ = (sem_pred * 255/args.num_semantic_classes).astype(np.uint8)
+            imageio.imwrite(os.path.join(dir_name, f'{i:03d}_semantic.png'), sem_pred_)
+
+            sem_GT = sample['semantics_gt'].view(h, w, 1).cpu().numpy()
+            sem_GT = (sem_GT * 255 / args.num_semantic_classes).astype(np.uint8)
+            imageio.imwrite(os.path.join(dir_name, f'{i:03d}_semantic_GT.png'), sem_GT)
 
 
     if args.dataset_name == 'blender' or \

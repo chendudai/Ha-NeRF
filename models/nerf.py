@@ -32,16 +32,18 @@ class PosEmbedding(nn.Module):
 
 def fc_block(in_f, num_semantic_classes):
     out_f = in_f // 2
-    x =  nn.Sequential(
+    return nn.Sequential(
         nn.Linear(in_f, out_f),
-        nn.ReLU(out_f)
+        nn.ReLU(out_f),
+        # nn.Linear(out_f, out_f//2),
+        # nn.ReLU(out_f//2),
+        nn.Linear(out_f, num_semantic_classes)
     )
-    return nn.Sequential(x, nn.Linear(out_f, num_semantic_classes))
 
 class NeRF(nn.Module):
     def __init__(self, typ,
                  D=8, W=256, skips=[4],
-                 enable_semantic=True, num_semantic_classes=11,
+                 enable_semantic=False, num_semantic_classes=11,
                  in_channels_xyz=63, in_channels_dir=27,
                  encode_appearance=False, in_channels_a=48,
                  encode_random=False):
