@@ -14,8 +14,11 @@ from .colmap_utils import \
 
 from math import sqrt, exp
 import random
+import imageio
+from torchvision import transforms
 
 from . import global_val
+from skimage.transform import resize
 
 class PhototourismDataset(Dataset):
     def __init__(self, root_dir, split='train', img_downscale=1, val_num=1, use_cache=False, batch_size=1024, scale_anneal=-1, min_scale=0.25):
@@ -205,19 +208,29 @@ class PhototourismDataset(Dataset):
 
 
                     img_w, img_h = img.size
-                    if self.img_downscale > 1:
+                    if self.img_downscale >= 1:
                         img_w = img_w//self.img_downscale
                         img_h = img_h//self.img_downscale
                         img_rs = img.resize((img_w, img_h), Image.LANCZOS)
 
-                    img_rs = self.transform(img_rs) # (3, h, w)
 
                     path_semantics = os.path.join(self.root_dir, 'dense/semantics', self.image_paths[id_])
                     path_semantics = path_semantics[:86] + '_pred_crf.pkl'
+
                     with open(path_semantics, 'rb') as f:
                         semantics_gt = pickle.load(f)
-                    semantics_gt = torch.Tensor(np.resize(semantics_gt, [img_w, img_h])).long()
-                    semantics_gt = semantics_gt.view(-1, 1)
+
+
+                    img_rs = img_rs.resize((semantics_gt.shape[1], semantics_gt.shape[0]), Image.LANCZOS)
+                    convert_tensor = transforms.ToTensor()
+                    semantics_gt = convert_tensor(semantics_gt) * 255
+
+
+
+                    img_w, img_h = img_rs.size
+                    img_rs = self.transform(img_rs)  # (3, h, w)
+
+                    semantics_gt = semantics_gt.reshape(-1,).long()
 
 
                     img_8 = img.resize((img_w//self.img_downscale_appearance, img_h//self.img_downscale_appearance), Image.LANCZOS)
@@ -329,23 +342,30 @@ class PhototourismDataset(Dataset):
             img = Image.open(os.path.join(self.root_dir, 'dense/images',
                                           self.image_paths[id_])).convert('RGB')
             img_w, img_h = img.size
-            if self.img_downscale > 1:
+            if self.img_downscale >= 1:
                 img_w = img_w//self.img_downscale
                 img_h = img_h//self.img_downscale
                 img_s = img.resize((img_w, img_h), Image.LANCZOS)
-                # img_s = self.resize(img_s)
-            img_s = self.transform(img_s) # (3, h, w)
-
-            img_s = img_s.view(3, -1).permute(1, 0) # (h*w, 3) RGB
-            sample['rgbs'] = img_s
-
 
             path_semantics = os.path.join(self.root_dir, 'dense/semantics', self.image_paths[id_])
             path_semantics = path_semantics[:86] + '_pred_crf.pkl'
             with open(path_semantics, 'rb') as f:
                 semantics_gt = pickle.load(f)
-            semantics_gt = torch.Tensor(np.resize(semantics_gt, [img_w, img_h])).long()
-            semantics_gt = semantics_gt.view(-1, 1)
+
+
+            img_s = img_s.resize((semantics_gt.shape[1], semantics_gt.shape[0]), Image.LANCZOS)
+            convert_tensor = transforms.ToTensor()
+            semantics_gt = convert_tensor(semantics_gt) * 255
+
+
+            img_w, img_h = img_s.size
+
+            img_s = self.transform(img_s)  # (3, h, w)
+
+            semantics_gt = semantics_gt.reshape(-1, ).long()
+
+            img_s = img_s.view(3, -1).permute(1, 0) # (h*w, 3) RGB
+            sample['rgbs'] = img_s
 
             sample['semantics_gt'] = semantics_gt
 
