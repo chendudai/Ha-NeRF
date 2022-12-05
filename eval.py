@@ -118,6 +118,51 @@ def batched_inference(models, embeddings,
         results[k] = torch.cat(v, 0)
     return results
 
+
+def label_img_to_color(img):
+    label_to_color = {
+    0: [255, 255,255],
+    1: [244, 35,232],
+    2: [ 70, 70, 70],
+    3: [102,102,156],
+    4: [190,153,153],
+    5: [153,153,153],
+    6: [250,170, 30],
+    7: [220,220,  0],
+    8: [107,142, 35],
+    9: [152,251,152],
+    10: [ 70,130,180],
+    11: [220, 20, 60]
+    }
+    img_rgb = np.zeros((img.shape[0], img.shape[1], 3))
+
+    for key in label_to_color.keys():
+        img_rgb[img == key] = label_to_color[key]
+
+    return img_rgb.astype('uint8')
+
+def label_img_to_blue(img):
+    label_to_color = {
+    0: [255, 255,255],
+    1: [0, 0,255],
+    2: [0, 0,255],
+    3: [0, 0,255],
+    4: [0, 0,255],
+    5: [0, 0,255],
+    6: [0, 0,255],
+    7: [0, 0,255],
+    8: [0, 0,255],
+    9: [0, 0,255],
+    10: [0, 0,255],
+    11: [0, 0,255],
+    }
+    img_rgb = np.zeros((img.shape[0], img.shape[1], 3))
+
+    for key in label_to_color.keys():
+        img_rgb[img == key] = label_to_color[key]
+
+    return img_rgb.astype('uint8')
+
 def eulerAnglesToRotationMatrix(theta):
     R_x = np.array([[1,         0,                  0                   ],
                     [0,         math.cos(theta[0]), -math.sin(theta[0]) ],
@@ -151,7 +196,7 @@ if __name__ == "__main__":
     #     scene = args.root_dir.split('/')[-3]
     scene = 'test_undistorted'
     embedding_xyz = PosEmbedding(args.N_emb_xyz-1, args.N_emb_xyz)
-    embedding_dir = PosEmbedding(args.N_emb_dir-1, args.N_emb_dir)
+    embedding_dir = PosEmbedding(args.N_emb_dir-1, args.N_emb_dir) 
     embeddings = {'xyz': embedding_xyz, 'dir': embedding_dir}
     if args.encode_a:
         # enc_a
@@ -172,6 +217,7 @@ if __name__ == "__main__":
             img = img[:3, :, :]*img[-1:, :, :] + (1-img[-1:, :, :]) # blend A to RGB (3, h, w)
             whole_img = normalize(img).unsqueeze(0).cuda()
             kwargs['a_embedded_from_img'] = enc_a(whole_img)
+
 
     nerf_coarse = NeRF('coarse',
                        enable_semantic=args.enable_semantic, num_semantic_classes=args.num_semantic_classes,
@@ -376,9 +422,24 @@ if __name__ == "__main__":
             imageio.imwrite(os.path.join(dir_name, f'{i:03d}_semantic.png'), sem_pred_)
 
             sem_GT = sample['semantics_gt'].view(h, w, 1).cpu().numpy()
-            sem_GT = (sem_GT * 255 / args.num_semantic_classes).astype(np.uint8)
-            imageio.imwrite(os.path.join(dir_name, f'{i:03d}_semantic_GT.png'), sem_GT)
+            sem_GT_ = (sem_GT * 255 / args.num_semantic_classes).astype(np.uint8)
+            imageio.imwrite(os.path.join(dir_name, f'{i:03d}_semantic_GT.png'), sem_GT_)
 
+            img_label_to_color_pred = label_img_to_color(sem_pred.squeeze())
+            img_label_to_color_GT = label_img_to_color(sem_GT.squeeze())
+
+
+            imageio.imwrite(os.path.join(dir_name, f'{i:03d}_mask_pred_in_rgb.png'), img_label_to_color_pred)
+
+            imageio.imwrite(os.path.join(dir_name, f'{i:03d}_mask_GT_in_rgb.png'), img_label_to_color_GT)
+
+            img_label_to_blue_pred = label_img_to_blue(sem_pred.squeeze())
+            label_mask_pred_with_GT = img_GT * (0.75) + img_label_to_blue_pred * 0.25
+            imageio.imwrite(os.path.join(dir_name, f'{i:03d}_label_mask_pred_with_GT.png'), label_mask_pred_with_GT)
+
+            img_label_to_blue_GT = label_img_to_blue(sem_GT.squeeze())
+            label_mask_GT_with_GT = img_GT * (0.75) + img_label_to_blue_GT * 0.25
+            imageio.imwrite(os.path.join(dir_name, f'{i:03d}_label_mask_GT_with_GT.png'), label_mask_GT_with_GT)
 
     if args.dataset_name == 'blender' or \
       (args.dataset_name == 'phototourism' and args.split == 'test_test'):

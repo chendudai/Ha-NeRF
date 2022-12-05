@@ -339,10 +339,44 @@ def main(hparams):
                             debug=False,
                             create_git_tag=False,
                             log_graph=False)
-    # hparams.ckpt_path = '/mnt/data/chendudai/repos/HaNeRF/save/ckpts/test_undistorted_0_1/test/epoch=1.ckpt'
+
+
+    # Train a pretrrained model
+    hparams.ckpt_path = '/mnt/data/chendudai/repos/HaNeRF/save/ckpts/0_1_withoutSemantics_6Epochs/epoch=5.ckpt'
+    # system.load_state_dict(torch.load(hparams.ckpt_path))
+   # (checkpoint['state_dict'])
+
+
+    nerf_coarse = NeRF('coarse',
+                            enable_semantic=hparams.enable_semantic,
+                            num_semantic_classes=hparams.num_semantic_classes,
+                            in_channels_xyz=6 * hparams.N_emb_xyz + 3,
+                            in_channels_dir=6 * hparams.N_emb_dir + 3)
+
+    nerf_fine = NeRF('fine',
+                              enable_semantic=hparams.enable_semantic,
+                              num_semantic_classes=hparams.num_semantic_classes,
+                              in_channels_xyz=6 * hparams.N_emb_xyz + 3,
+                              in_channels_dir=6 * hparams.N_emb_dir + 3,
+                              encode_appearance=hparams.encode_a,
+                              in_channels_a=hparams.N_a,
+                              encode_random=hparams.encode_random)
+
+    load_ckpt(nerf_coarse, hparams.ckpt_path, model_name='nerf_coarse')
+    load_ckpt(nerf_fine, hparams.ckpt_path, model_name='nerf_fine')
+    # models = {'coarse': nerf_coarse, 'fine': nerf_fine}
+    system.models['coarse'] = nerf_coarse
+    system.models['fine'] = nerf_fine
+
+    system.models_to_train[1]['coarse'] = nerf_coarse
+    system.models_to_train[1]['fine'] = nerf_fine
+
+    system.nerf_coarse = nerf_coarse
+    system.nerf_fine = nerf_fine
+
     trainer = Trainer(max_epochs=hparams.num_epochs,
                       checkpoint_callback=checkpoint_callback,
-                      resume_from_checkpoint=hparams.ckpt_path,
+                      # resume_from_checkpoint=hparams.ckpt_path,
                       logger=logger,
                       weights_summary=None,
                       progress_bar_refresh_rate=hparams.refresh_every,

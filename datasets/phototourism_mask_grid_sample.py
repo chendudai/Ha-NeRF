@@ -8,6 +8,7 @@ import pickle
 from PIL import Image
 from torchvision import transforms as T
 
+
 from .ray_utils import *
 from .colmap_utils import \
     read_cameras_binary, read_images_binary, read_points3d_binary
@@ -16,9 +17,8 @@ from math import sqrt, exp
 import random
 import imageio
 from torchvision import transforms
-
 from . import global_val
-from skimage.transform import resize
+# from skimage.transform import resize
 
 class PhototourismDataset(Dataset):
     def __init__(self, root_dir, split='train', img_downscale=1, val_num=1, use_cache=False, batch_size=1024, scale_anneal=-1, min_scale=0.25):
@@ -43,7 +43,7 @@ class PhototourismDataset(Dataset):
             self.img_downscale_appearance = 4
 
         if split == 'val': # image downscale=1 will cause OOM in val mode
-            self.img_downscale = max(2, self.img_downscale)
+            self.img_downscale = max(1, self.img_downscale)
         self.val_num = max(1, val_num) # at least 1
         self.use_cache = use_cache
         self.define_transforms()
@@ -112,7 +112,11 @@ class PhototourismDataset(Dataset):
                 if cam is not None:
 
                     img_w, img_h = int(cam.params[2]*2), int(cam.params[3]*2)
-                    img_w_, img_h_ = img_w//self.img_downscale, img_h//self.img_downscale
+
+                    # I added *2 if the img_downscale = 1 but accutaly the image was downscaled before that.
+                    img_w_, img_h_ = img_w//(self.img_downscale*2), img_h//(self.img_downscale*2)
+
+
                     K[0, 0] = cam.params[0]*img_w_/img_w # fx
                     K[1, 1] = cam.params[1]*img_h_/img_h # fy
                     K[0, 2] = cam.params[2]*img_w_/img_w # cx
@@ -215,7 +219,7 @@ class PhototourismDataset(Dataset):
 
 
                     path_semantics = os.path.join(self.root_dir, 'dense/semantics', self.image_paths[id_])
-                    path_semantics = path_semantics[:86] + '_pred_crf.pkl'
+                    path_semantics = os.path.splitext(path_semantics)[0] + '_pred_crf.pkl'
 
                     with open(path_semantics, 'rb') as f:
                         semantics_gt = pickle.load(f)
@@ -348,7 +352,7 @@ class PhototourismDataset(Dataset):
                 img_s = img.resize((img_w, img_h), Image.LANCZOS)
 
             path_semantics = os.path.join(self.root_dir, 'dense/semantics', self.image_paths[id_])
-            path_semantics = path_semantics[:86] + '_pred_crf.pkl'
+            path_semantics = os.path.splitext(path_semantics)[0] + '_pred_crf.pkl'
             with open(path_semantics, 'rb') as f:
                 semantics_gt = pickle.load(f)
 
