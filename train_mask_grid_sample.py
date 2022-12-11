@@ -341,11 +341,17 @@ def main(hparams):
                             log_graph=False)
 
 
+
     # Train a pretrrained model
     hparams.ckpt_path = '/mnt/data/chendudai/repos/HaNeRF/save/ckpts/0_1_withoutSemantics_6Epochs/epoch=5.ckpt'
     # system.load_state_dict(torch.load(hparams.ckpt_path))
    # (checkpoint['state_dict'])
 
+    enc_a = E_attr(3, hparams.N_a).cuda()
+    load_ckpt(enc_a, hparams.ckpt_path, model_name='enc_a')
+
+    system.enc_a = enc_a
+    system.models_to_train[0] = enc_a
 
     nerf_coarse = NeRF('coarse',
                             enable_semantic=hparams.enable_semantic,
@@ -362,9 +368,10 @@ def main(hparams):
                               in_channels_a=hparams.N_a,
                               encode_random=hparams.encode_random)
 
+
     load_ckpt(nerf_coarse, hparams.ckpt_path, model_name='nerf_coarse')
     load_ckpt(nerf_fine, hparams.ckpt_path, model_name='nerf_fine')
-    # models = {'coarse': nerf_coarse, 'fine': nerf_fine}
+
     system.models['coarse'] = nerf_coarse
     system.models['fine'] = nerf_fine
 
@@ -373,6 +380,18 @@ def main(hparams):
 
     system.nerf_coarse = nerf_coarse
     system.nerf_fine = nerf_fine
+
+
+    # Freeze weights for not semantic layers
+    for param in system.parameters():
+        param.requires_grad = False
+
+    for param in system.nerf_coarse.semantic.parameters():
+        param.requires_grad = True
+
+    for param in system.nerf_fine.semantic.parameters():
+        param.requires_grad = True
+
 
     trainer = Trainer(max_epochs=hparams.num_epochs,
                       checkpoint_callback=checkpoint_callback,
