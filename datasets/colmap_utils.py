@@ -337,7 +337,12 @@ def write_cameras_binary(cameras, path_to_model_file):
         write_next_bytes(fid, len(cameras), "Q")
         for _, cam in cameras.items():
             # model_id = CAMERA_MODEL_NAMES[cam.model].model_id
-            model_id = 1
+            # model_id = 1
+
+            for model_name in CAMERA_MODEL_NAMES:
+                if model_name.model_name == cam.model:
+                    model_id = model_name.model_id
+
             camera_properties = [cam.id,
                                  model_id,
                                  cam.width,

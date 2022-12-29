@@ -130,11 +130,13 @@ def render_rays(models,
             static_sigmas = out[..., 3] # (N_rays, N_samples_)
 
             if model.enable_semantic:
-                semantics = out[..., 4:15] # (N_rays, N_samples_, classes)
+                semantics = out[..., 4:6] # (N_rays, N_samples_, classes)
                 # semantics = out[..., 4:103]
+                # semantics = out[..., 4:15]
 
             if output_random and model.enable_semantic:
-                static_rgbs_random = out[..., 15:]
+                static_rgbs_random = out[..., 6:]
+                # static_rgbs_random = out[..., 15:]
                 # static_rgbs_random = out[..., 103:]
             elif output_random and not model.enable_semantic:
                 static_rgbs_random = out[..., 4:]

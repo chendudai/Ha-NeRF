@@ -24,6 +24,12 @@ def create_nerf_root_dir_from_ws(input_dir, root_dir):
     # for j,i in enumerate(images_selected):
     #     images_selected[j] = i[0:8].decode("utf-8")
 
+    # with open(os.path.join('names.txt'), 'wt', encoding='utf-8') as out_file:
+    #     for i, image in enumerate(images):
+    #         image_output_filename = str(i).zfill(4) + os.path.splitext(images[image].name)[1]  # + '_' + os.path.basename(images[image].name)
+    #         tsv_writer = csv.writer(out_file, delimiter='\t')
+    #         tsv_writer.writerow([image_output_filename, images[image].name])
+
     j = 0
     for i,image in enumerate(images):
         image_curr_input = os.path.join(images_input_dir, images[image].name)
@@ -41,6 +47,8 @@ def create_nerf_root_dir_from_ws(input_dir, root_dir):
         else:
             print('error!!! This file does not exist: ' + image_curr_input)
             continue
+
+
         # update camera parameteres
         cam = images[image].camera_id
         img = Image.open(image_curr_input)
