@@ -63,7 +63,7 @@ class PhototourismDataset(Dataset):
         self.scene_name = os.path.basename(tsv)[:-4]
         self.files = pd.read_csv(tsv, sep='\t')
         self.files = self.files[~self.files['id'].isnull()] # remove data without id
-        self.files = self.files[:100]  # start with smaller set
+        # self.files = self.files[:50]  # start with smaller set
         self.files.reset_index(inplace=True, drop=True)
 
         # Step 1. load image paths
@@ -233,7 +233,7 @@ class PhototourismDataset(Dataset):
                         semantics_gt[semantics_gt != 129] = 0
                         semantics_gt[semantics_gt == 129] = 1
 
-                        img_rs = img_rs.resize((semantics_gt.shape[1], semantics_gt.shape[0]), Image.LANCZOS)
+                        # img_rs = img_rs.resize((semantics_gt.shape[1], semantics_gt.shape[0]), Image.LANCZOS)
 
                         # convert_tensor = transforms.ToTensor()
                         # semantics_gt = convert_tensor(semantics_gt) * 255
@@ -372,7 +372,7 @@ class PhototourismDataset(Dataset):
                 semantics_gt = semantics_gt.argmax(dim=0)
                 semantics_gt[semantics_gt != 129] = 0
                 semantics_gt[semantics_gt == 129] = 1
-                img_s = img_s.resize((semantics_gt.shape[1], semantics_gt.shape[0]), Image.LANCZOS)
+                # img_s = img_s.resize((semantics_gt.shape[1], semantics_gt.shape[0]), Image.LANCZOS)
 
                 # convert_tensor = transforms.ToTensor()
                 # semantics_gt = convert_tensor(semantics_gt) * 255
@@ -407,7 +407,6 @@ class PhototourismDataset(Dataset):
             uv_sample = torch.cat((h_samples.permute(1, 0).contiguous().view(-1,1), w_samples.permute(1, 0).contiguous().view(-1,1)), -1)
             sample['uv_sample'] = uv_sample
 
-            img_w, img_h = img.size
             img_8 = img.resize((img_w//self.img_downscale_appearance, img_h//self.img_downscale_appearance), Image.LANCZOS)
 
             const_minSize = 33
